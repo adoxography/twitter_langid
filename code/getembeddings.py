@@ -4,6 +4,9 @@ Utility for printing nearest neighbors to a given word in embedding space.
 Uses the char2vec portion of a trained model and the tweetlid vocabulary.
 Nearest neighbors are given based on cosine similarity.
 """
+from __future__ import print_function
+from builtins import input
+from builtins import range
 import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -32,7 +35,7 @@ input_vocab = Vocab.MakeFromData(dataset.GetSentences(), min_count=1)
 char_vocab = Vocab.Load(os.path.join(args.expdir, 'char_vocab.pickle'))
 
 max_word_len = max([len(x) for x in input_vocab.GetWords()]) + 2
-print 'max word len {0}'.format(max_word_len)
+print('max word len {0}'.format(max_word_len))
 
 with open(os.path.join(args.expdir, 'model_params.json'), 'r') as f:
   model_params = json.load(f)
@@ -52,8 +55,8 @@ out = session.run([embeds], {c2v.words_as_chars: the_words})[0]
 
 
 while True:
-  print 'please input a word:'
-  user_word = raw_input()
+  print('please input a word:')
+  user_word = input()
 
   user_chars, _ = c2v.MakeMat([user_word, 'DUMMY_WORD'],
                               pad_len=max_word_len)
@@ -65,4 +68,4 @@ while True:
     index = idx[-i]
     score = sims[index]
 
-    print '{0} {1:.3f} {2}'.format(i, score, input_vocab[index])
+    print('{0} {1:.3f} {2}'.format(i, score, input_vocab[index]))

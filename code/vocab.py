@@ -1,3 +1,7 @@
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 import argparse
 import collections
 import numpy as np
@@ -8,7 +12,7 @@ import re
 class Vocab(object):
 
   def _normalize(self, word):
-    if re.match(ur'^<.*>$', word):
+    if re.match(r'^<.*>$', word):
       return word
 
     if self.specialcase:
@@ -28,7 +32,7 @@ class Vocab(object):
       word = word.lower()
 
     if self.numreplace:
-      word = re.sub(ur'\d', '#', word)
+      word = re.sub(r'\d', '#', word)
 
     return word
 
@@ -44,9 +48,9 @@ class Vocab(object):
     self.vocab_size = len(tokenset)
     self.unk_symbol = unk_symbol
 
-    self.word_to_idx = dict(zip(sorted(tokenset), range(self.vocab_size)))
-    self.idx_to_word = dict(zip(self.word_to_idx.values(),
-                                self.word_to_idx.keys()))
+    self.word_to_idx = dict(list(zip(sorted(tokenset), list(range(self.vocab_size)))))
+    self.idx_to_word = dict(list(zip(list(self.word_to_idx.values()),
+                                list(self.word_to_idx.keys()))))
 
 
   @staticmethod
@@ -110,7 +114,7 @@ class Vocab(object):
 
   def GetWords(self):
     """Get a list of words in the vocabulary."""
-    return self.word_to_idx.keys()
+    return list(self.word_to_idx.keys())
 
   def LookupIdx(self, token):
     token = self._normalize(token)
@@ -130,7 +134,7 @@ class Vocab(object):
     return self.LookupIdx(key)
 
   def __iter__(self):
-    word_list = [self.idx_to_word[x] for x in xrange(self.vocab_size)]
+    word_list = [self.idx_to_word[x] for x in range(self.vocab_size)]
     return word_list.__iter__()
 
   def __len__(self):
@@ -155,4 +159,4 @@ if __name__ == '__main__':
   v = Vocab.Load(args.filename)
 
   for i in v.GetWords():
-    print i
+    print(i)

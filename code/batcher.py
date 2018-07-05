@@ -1,5 +1,11 @@
 """This file holds the Dataset class, which helps with the loading
 and organizing of the training data."""
+from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import argparse
 import collections
 import gzip
@@ -34,7 +40,7 @@ def LoadData(filename, mode='train', model='tweet'):
     tuple of sentences, labels and ids
   """
   ids, labels, sentences = [], [], []
-  with gzip.open(filename, 'r') as f:
+  with gzip.open(filename, 'rt') as f:
     for line in f:
       tweetid, lang, tweet = line.split('\t')
 
@@ -55,17 +61,16 @@ def LoadData(filename, mode='train', model='tweet'):
       # The { and } brackets are used for start/end symbols
       if model in ['word', 'tweet']:
         #split on whitespace to get words
-        sentences.append(['{'] + [unicode(x_.decode('utf8'))
-                                  for x_ in tweet.split()] + ['}'])
+        sentences.append(['{'] + tweet.split() + ['}'])
       elif model=='char':
         #include full tweet as single unicode string (list of length 3)
-        sentences.append([u'{'] + [unicode(tweet.decode('utf8'))] + [u'}'])
+        sentences.append([u'{'] + [tweet] + [u'}'])
 
       else:
         msg = 'Invalid unit type <{0}> for tokenizing tweet'.format(model)
         raise ValueError(msg)
 
-  print '{0} examples loaded'.format(len(sentences))
+  print('{0} examples loaded'.format(len(sentences)))
   return sentences, labels, ids
 
 
@@ -127,9 +132,9 @@ class Dataset(object):
     labels = list(itertools.chain(*self._labels))
 
     self.example_weights = []
-    for i in xrange(len(self.dataset_weights)):
+    for i in range(len(self.dataset_weights)):
       w = self.dataset_weights[i]
-      for _ in xrange(len(self._sentences[i])):
+      for _ in range(len(self._sentences[i])):
         self.example_weights.append(w)
     self.example_weights = np.array(self.example_weights)
 
@@ -151,7 +156,7 @@ class Dataset(object):
     # There is a hack to only use the examples with weight 1 as a way
     # to prevent wikipedia from dominating the weights.
     counts = self.labels[self.example_weights == 1, :].sum(axis=0)
-    self.w = 1.0/(1.0 + counts)
+    self.w = old_div(1.0,(1.0 + counts))
     self.w /= self.w.mean()  # scale the class weights to reasonable values
 
     self.N = len(sentences)
@@ -170,7 +175,7 @@ class Dataset(object):
 
   def GetNumBatches(self):
     """Returns num batches per epoch."""
-    return self.N / self.batch_size
+    return old_div(self.N, self.batch_size)
 
   def _Permute(self):
     """Shuffle the training data."""
@@ -187,7 +192,7 @@ class Dataset(object):
       self.current_idx = 0
       self._Permute()
 
-    idx = range(self.current_idx, self.current_idx + self.batch_size)
+    idx = list(range(self.current_idx, self.current_idx + self.batch_size))
     self.current_idx += self.batch_size
 
     return (self.sentences[idx, :], self.seq_lens[idx],
@@ -203,12 +208,12 @@ if __name__ == '__main__':
   _, labels, _ = LoadData(args.data, 'all')
 
   total = len(labels)
-  print 'total sentences: {0}'.format(total)
+  print('total sentences: {0}'.format(total))
   unique_labels = len(set([tuple(x) for x in labels]))
-  print 'unique labels: {0}'.format(unique_labels)
+  print('unique labels: {0}'.format(unique_labels))
 
   counts = collections.Counter([tuple(s) for s in labels])
 
   for lang in sorted(counts.keys()):
-    print '{0}\t{1}\t{2:.1f}'.format(' '.join(lang), counts[lang],
-                                     100 * counts[lang] / float(total))
+    print('{0}\t{1}\t{2:.1f}'.format(' '.join(lang), counts[lang],
+                                     100 * counts[lang] / float(total)))

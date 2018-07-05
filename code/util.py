@@ -1,4 +1,11 @@
+from __future__ import division
+from __future__ import print_function
 # Misc. helper functions go in this file.
+from builtins import hex
+from builtins import zip
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import collections
 import numpy as np
 import os
@@ -27,17 +34,17 @@ def Metrics(preds, labs, show=True):
 
   label_totals = collections.Counter(labs)
   pred_totals = collections.Counter(preds)
-  confusion_matrix = collections.Counter(zip(preds, labs))
+  confusion_matrix = collections.Counter(list(zip(preds, labs)))
 
   num_correct = 0
   for lang in all_langs:
     num_correct += confusion_matrix[(lang, lang)]
-  acc = num_correct / float(len(preds))
-  print 'accuracy = {0:.3f}'.format(acc)
+  acc = old_div(num_correct, float(len(preds)))
+  print('accuracy = {0:.3f}'.format(acc))
 
   if show:
-    print ' Lang     Prec.   Rec.   F1'
-    print '------------------------------'
+    print(' Lang     Prec.   Rec.   F1')
+    print('------------------------------')
 
   scores = []
   fmt_str = '  {0:6}  {1:6.2f} {2:6.2f} {3:6.2f}'
@@ -57,12 +64,12 @@ def Metrics(preds, labs, show=True):
 
     scores.append([precision, recall, f1])
     if show:
-      print fmt_str.format(lang, precision, recall, f1)
+      print(fmt_str.format(lang, precision, recall, f1))
 
   totals = np.array(scores).mean(axis=0)
   if show:
-    print '------------------------------'
-    print fmt_str.format('Total:', totals[0], totals[1], totals[2])
+    print('------------------------------')
+    print(fmt_str.format('Total:', totals[0], totals[1], totals[2]))
   return totals[2]
 
 
@@ -77,7 +84,7 @@ def ConfusionMat(preds, labs):
   num_langs = len(all_langs)
 
   # create a mapping from labels to id numbers
-  lookup = dict(zip(sorted(all_langs), range(num_langs)))
+  lookup = dict(list(zip(sorted(all_langs), list(range(num_langs)))))
 
   # make the counts for the confusion matrix
   counts = np.zeros((num_langs, num_langs))
@@ -88,13 +95,13 @@ def ConfusionMat(preds, labs):
   pyplot.imshow(np.log(counts+1.0), interpolation='none')
 
   # plot the text labels
-  for i in xrange(num_langs):
-    for j in xrange(num_langs):
+  for i in range(num_langs):
+    for j in range(num_langs):
       pyplot.text(i, j, str(int(counts[i, j])), color='white',
                   horizontalalignment='center')
   # take care of the axes
-  pyplot.xticks(range(num_langs), sorted(all_langs))
-  pyplot.yticks(range(num_langs), sorted(all_langs))
+  pyplot.xticks(list(range(num_langs)), sorted(all_langs))
+  pyplot.yticks(list(range(num_langs)), sorted(all_langs))
   pyplot.xlabel('Prediction')
   pyplot.ylabel('True Label')
   pyplot.show()
@@ -151,7 +158,7 @@ def GetProj(feat_mat):
 
 def PlotText(pts, labels):
   pyplot.plot(pts[:, 0], pts[:, 1], 'x')
-  for i in xrange(pts.shape[0]):
+  for i in range(pts.shape[0]):
     pyplot.text(pts[i, 0], pts[i, 1], labels[i])
   pyplot.show()
 
@@ -167,9 +174,6 @@ def Graphemes(s):
   """
   graphemes = []
   current = []
-
-  if type(s) == unicode:
-    s = s.encode('utf8')
 
   for c in s:
     val = ord(c) & 0xC0
@@ -194,10 +198,10 @@ def Graphemes(s):
 
 
 def Bytes(s):
-  if type(s) == unicode:
+  if type(s) == str:
     s = s.encode('utf8')
   z = s.encode('hex')
-  return [z[2*i:2*i+2] for i in range(len(z)/2)]
+  return [z[2*i:2*i+2] for i in range(old_div(len(z),2))]
 
 
 def GetLangName(code):

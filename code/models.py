@@ -1,3 +1,7 @@
+from __future__ import division
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import tensorflow as tf
 import numpy as np
 
@@ -22,13 +26,14 @@ class BaseModel(object):
 
     embeddings = c2v.GetEmbeddings(self.x)
     self._inputs = [tf.squeeze(input_, [1]) for input_ in
-                    tf.split(1, max_sequence_len, embeddings)]
+                    tf.split(embeddings, max_sequence_len, 1)]
 
     # Need to prepare a mask to zero out the padding symbols.
 
     # Make a batch_size x max_sequence_len matrix where each
     # row contains the length repeated max_sequence_len times.
-    lengths_transposed = tf.expand_dims(tf.to_int32(self.seq_lens), 1)
+    # lengths_transposed = tf.expand_dims(tf.to_int32(self.seq_lens), 1)
+    lengths_transposed = tf.expand_dims(self.seq_lens, 1)
     lengths_tiled = tf.tile(lengths_transposed, [1, max_sequence_len])
 
     # Make a matrix where each row contains [0, 1, ..., max_sequence_len]
@@ -39,7 +44,7 @@ class BaseModel(object):
     # Use the logical operations to create a mask
     indicator = tf.less(range_tiled, lengths_tiled)
     sz = [batch_size, max_sequence_len]
-    self._mask = tf.select(indicator, tf.ones(sz), tf.zeros(sz))
+    self._mask = tf.where(indicator, tf.ones(sz), tf.zeros(sz))
 
   def _DoPredictions(self, in_size, mats, class_weights=None):
     """Takes in an array of states and calculates predictions.
@@ -59,12 +64,12 @@ class BaseModel(object):
       logits = tf.nn.xw_plus_b(o_, pred_mat, pred_bias)
       return tf.nn.softmax(logits)
 
-    self.preds_by_word = tf.pack([GetWordPred(o_) for o_ in mats])
-    self.cs = self._mask / tf.reduce_sum(self._mask, 1, keep_dims=True)
+    self.preds_by_word = tf.stack([GetWordPred(o_) for o_ in mats])
+    self.cs = old_div(self._mask, tf.reduce_sum(self._mask, 1, keepdims=True))
 
     # The final prediction is the average of the predictions for each word
     # weighted by the individual confidence/utility scores.
-    preds_weighted = tf.mul(tf.reshape(tf.transpose(self.cs), [-1, 1]),
+    preds_weighted = tf.multiply(tf.reshape(tf.transpose(self.cs), [-1, 1]),
                             tf.reshape(self.preds_by_word,
                                        [-1, self._out_vocab_size]))
     preds_weighted_reshaped = tf.reshape(preds_weighted,
@@ -108,8 +113,8 @@ class WordSeqModel(BaseModel):
 
     # Also, output confidence scores at every word.
     confidence_mat = tf.get_variable('confidence_mat', [in_size, 1])
-    confidence_scores = tf.concat(1, [tf.matmul(o_, confidence_mat)
-                                      for o_ in self._inputs])
+    confidence_scores = tf.concat([tf.matmul(o_, confidence_mat)
+                                      for o_ in self._inputs], 1)
 
     # dropout on confidence_scores
     random_tensor = (1.0 - self._dropout_keep_prob +
@@ -123,7 +128,7 @@ class WordSeqModel(BaseModel):
     # weighted by the individual confidence/utility scores.
 
     wvs = tf.pack(self._inputs)
-    wvs_weighted = tf.mul(tf.reshape(tf.transpose(self.cs), [-1, 1]),
+    wvs_weighted = tf.multiply(tf.reshape(tf.transpose(self.cs), [-1, 1]),
                           tf.reshape(wvs, [-1, in_size]))
     wvs_weighted_reshaped = tf.reshape(wvs_weighted, wvs.get_shape())
     wvsum = tf.reduce_sum(wvs_weighted_reshaped,0)
@@ -196,7 +201,8 @@ class TweetSeqModel(BaseModel): #formerly SeqModel
       with tf.variable_scope('bw'):
         cell_bw = GetCell()
 
-      rnnout, _, _ = tf.nn.bidirectional_rnn(cell_fw, cell_bw, self._inputs,
+      rnnout, _, _ = tf.nn.static_bidirectional_rnn(cell_fw, cell_bw,
+                                             self._inputs,
                                              dtype=tf.float32,
                                              sequence_length=self.seq_lens)
       if proj_size:
@@ -279,7 +285,7 @@ class WordLevelModel(object):
 
     embeddings = c2v.GetEmbeddings(self.x)
     self._inputs = [tf.squeeze(input_, [1]) for input_ in
-                    tf.split(1, max_sequence_len, embeddings)]
+                    tf.split(embeddings, max_sequence_len, 1)]
 
     # Need to prepare a mask to zero out the padding symbols.
 
@@ -366,7 +372,7 @@ class WordLevelModel(object):
 
     self.preds_by_word = tf.pack([GetWordPred(o_) for o_ in mats])
     self.preds_by_instance = tf.pack([self.preds_by_word[:,i,:] for i in range(self.preds_by_word.get_shape()[1])])
-    self.probs = tf.mul(tf.expand_dims(self._mask,2), self.preds_by_instance)
+    self.probs = tf.multiply(tf.expand_dims(self._mask,2), self.preds_by_instance)
 
     self._xent = _SafeXEnt(self.y, self.probs, class_weights=class_weights, sumd=[1,2])
 
@@ -400,5 +406,5 @@ def _SafeXEnt(y, probs, eps=0.0001, class_weights=None, sumd=[1]):
 def _SafeNegEntropy(probs, batch_size, eps=0.0001):
   """Computes negative entropy in a way that will not overflow."""
   adjusted_probs = tf.clip_by_value(probs, eps, 1.0 - eps)
-  entropy = tf.mul(probs, tf.log(adjusted_probs))
-  return tf.reduce_sum(entropy) / batch_size
+  entropy = tf.multiply(probs, tf.log(adjusted_probs))
+  return old_div(tf.reduce_sum(entropy), batch_size)

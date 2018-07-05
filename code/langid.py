@@ -1,6 +1,9 @@
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 import sys
-reload(sys)  # need to reload to set default encoding
-sys.setdefaultencoding('utf8')
+# reload(sys)  # need to reload to set default encoding
+# sys.setdefaultencoding('utf8')
 
 import argparse
 import collections
@@ -110,7 +113,7 @@ dataset.Prepare(input_vocab, output_vocab, und_symbol, ignore_categories)
 
 #Set other hyperparameters and create model
 max_word_len = max([len(x) for x in input_vocab.GetWords()]) + 2
-print 'max word len {0}'.format(max_word_len)
+print('max word len {0}'.format(max_word_len))
 
 dropout_keep_prob = tf.placeholder_with_default(1.0, (), name='keep_prob')
 if baseline:
@@ -130,7 +133,7 @@ model = models[args.model](batch_size=batch_size, model_params=model_params,
                            dropout_keep_prob=dropout_keep_prob,
                            out_vocab_size=len(output_vocab),
                            weights=dataset.w, c2v=c2v)
-saver = tf.train.Saver(tf.all_variables())
+saver = tf.train.Saver(tf.global_variables())
 session = tf.Session(config=config)
 
 
@@ -139,7 +142,7 @@ def Apply(expdir):
 
   results = collections.defaultdict(list)
 
-  for _ in xrange(dataset.GetNumBatches()):
+  for _ in range(dataset.GetNumBatches()):
     words, seqlen, labs, _ = dataset.GetNextBatch()
     batch_data = MakeFeedDict(words, seqlen, labs)
 
@@ -160,7 +163,7 @@ def Apply(expdir):
       
   for filtnum in results:
     dedup = collections.Counter(results[filtnum])
-    z = sorted(dedup.keys(), key=lambda x: -float(x[0]))
+    z = sorted(list(dedup.keys()), key=lambda x: -float(x[0]))
 
     with open('filters/{0}.txt'.format(filtnum), 'w') as f:
       for i in range(len(z)):
@@ -182,7 +185,7 @@ def Eval(expdir):
   saver.restore(session, os.path.join(expdir, 'model.bin'))
 
   all_preds, all_labs = [], []
-  for _ in xrange(dataset.GetNumBatches()):
+  for _ in range(dataset.GetNumBatches()):
     words, seqlen, labs, weights  = dataset.GetNextBatch()
     batch_data = MakeFeedDict(words, seqlen, labs)
 
@@ -214,7 +217,7 @@ def Train(expdir):
   tvars = tf.trainable_variables()
   grads, _ = tf.clip_by_global_norm(tf.gradients(model.cost, tvars), 5.0)
   optimizer = tf.train.AdamOptimizer(0.001)
-  train_op = optimizer.apply_gradients(zip(grads, tvars))
+  train_op = optimizer.apply_gradients(list(zip(grads, tvars)))
 
   session.run(tf.initialize_all_variables())
   if args.start:
@@ -222,8 +225,8 @@ def Train(expdir):
   util.PrintParams(tf.trainable_variables(), handle=logging.info)
 
   maxitr = model_params.get('num_training_iters', 80001)
-  print "Training for {} iterations...".format(maxitr)
-  for idx in xrange(maxitr): 
+  print("Training for {} iterations...".format(maxitr))
+  for idx in range(maxitr): 
     if args.data == 'codeswitch':
       words, seqlen, labs, ws, lines = dataset.GetNextBatch()
     else:
@@ -233,13 +236,13 @@ def Train(expdir):
     if idx % 25 == 0:
       probs = session.run([model.probs], batch_data)[0]
       s = [input_vocab[i] for i in words[0, :seqlen[0]]]
-      print ' '.join(s)
+      print(' '.join(s))
       if args.data != 'codeswitch':
-        print "Predicted:", GetTopPreds(probs[0, :])
-        print "Actual:", GetTopPreds(labs[0,:])
+        print("Predicted:", GetTopPreds(probs[0, :]))
+        print("Actual:", GetTopPreds(labs[0,:]))
       else:
-        print "Predict:", GetTopWordLevelPreds(probs[0,:,:], seqlen[0])
-        print "Actual: ", GetTopWordLevelPreds(labs[0,:,:], seqlen[0])
+        print("Predict:", GetTopWordLevelPreds(probs[0,:,:], seqlen[0]))
+        print("Actual: ", GetTopWordLevelPreds(labs[0,:,:], seqlen[0]))
 
     cost, _ = session.run([model.cost, train_op], batch_data)
     logging.info({'iter': idx, 'cost': float(cost)})
@@ -257,7 +260,7 @@ def Debug(expdir):
   zz = z.eval(session)
   c = util.GetProj(zz.T)
   lang_names = [util.GetLangName(output_vocab[i]) 
-                for i in xrange(len(output_vocab))]
+                for i in range(len(output_vocab))]
   util.PlotText(c, lang_names) 
 
   # plot some word embeddings 

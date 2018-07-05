@@ -3,6 +3,8 @@
 Use BasicEmbedding for traditional word embeddings or use the CharLSTM or
 CharCNN implementations of char2vec.
 """
+from builtins import range
+from builtins import object
 import numpy as np
 import tensorflow as tf
 import util
@@ -105,7 +107,7 @@ class Char2Vec(object):
   def GetBatchVocab(words):
     batch_vocab = np.unique(words)
     words_remapped = np.copy(words)
-    for i in xrange(len(batch_vocab)):
+    for i in range(len(batch_vocab)):
       np.place(words_remapped, words==batch_vocab[i], i)
     return batch_vocab, words_remapped
 
@@ -217,7 +219,7 @@ class CharLSTM(Char2Vec):
         out_backward = self._GetLastOutput(outputs_backward, slices)
 
     # This is the concatenation of the output from the two directions.
-    out = tf.concat(1, [out_forward, out_backward])
+    out = tf.concat([out_forward, out_backward], 1)
 
     # Project to the proper output dimension. This is a dimensionality
     # reduction step.
@@ -269,7 +271,7 @@ class CharCNN(Char2Vec):
         h_expanded = tf.expand_dims(h, -1)
 
       pools = []
-      filter_sizes = range(3,6)
+      filter_sizes = list(range(3,6))
       for width in filter_sizes:
         f, f_bias = MakeFilter(width, layer1_out_size, hidden_size,
                                'filter_w{0}'.format(width))
@@ -284,7 +286,7 @@ class CharCNN(Char2Vec):
           self.hh = tf.squeeze(pooled)
           self.hidx = tf.argmax(h2, 1)
 
-      pooled = tf.squeeze(tf.concat(3, pools), [1,2])
+      pooled = tf.squeeze(tf.concat(pools, 3), [1,2])
 
       # resnet layer https://arxiv.org/abs/1512.03385
       sz = len(filter_sizes) * hidden_size
