@@ -11,4 +11,3 @@
  "tweet_hidden_size": 40,
  "shared_hidden_size": 50,
  "num_training_iters": 3001}
-

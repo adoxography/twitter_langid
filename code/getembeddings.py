@@ -7,9 +7,6 @@ Nearest neighbors are given based on cosine similarity.
 from __future__ import print_function
 from builtins import input
 from builtins import range
-import sys
-reload(sys)
-sys.setdefaultencoding('utf8')
 
 import argparse
 import json
@@ -26,7 +23,7 @@ parser.add_argument('expdir')
 args = parser.parse_args()
 
 config = tf.ConfigProto(inter_op_parallelism_threads=10,
-                intra_op_parallelism_threads=10)
+                        intra_op_parallelism_threads=10)
 
 dataset = Dataset(10, preshuffle=False)
 dataset.ReadData('../data/tweetlid/training.tsv.gz', 'all', 'tweet')
@@ -38,7 +35,7 @@ max_word_len = max([len(x) for x in input_vocab.GetWords()]) + 2
 print('max word len {0}'.format(max_word_len))
 
 with open(os.path.join(args.expdir, 'model_params.json'), 'r') as f:
-  model_params = json.load(f)
+    model_params = json.load(f)
 
 c2v = Char2Vec(char_vocab, model_params,
                max_sequence_len=max_word_len)
@@ -55,17 +52,17 @@ out = session.run([embeds], {c2v.words_as_chars: the_words})[0]
 
 
 while True:
-  print('please input a word:')
-  user_word = input()
+    print('please input a word:')
+    user_word = input()
 
-  user_chars, _ = c2v.MakeMat([user_word, 'DUMMY_WORD'],
-                              pad_len=max_word_len)
-  user_embed = session.run([embeds], {c2v.words_as_chars: user_chars})[0][0, :]
-  sims = np.matmul(out, user_embed)
-  idx = np.argsort(sims)
+    user_chars, _ = c2v.MakeMat([user_word, 'DUMMY_WORD'],
+                                pad_len=max_word_len)
+    user_embed = session.run([embeds], {c2v.words_as_chars: user_chars})[0][0, :]
+    sims = np.matmul(out, user_embed)
+    idx = np.argsort(sims)
 
-  for i in range(1, 21):
-    index = idx[-i]
-    score = sims[index]
+    for i in range(1, 21):
+        index = idx[-i]
+        score = sims[index]
 
-    print('{0} {1:.3f} {2}'.format(i, score, input_vocab[index]))
+        print('{0} {1:.3f} {2}'.format(i, score, input_vocab[index]))
